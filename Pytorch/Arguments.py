@@ -12,8 +12,8 @@ def SetupArguments():
     parser.add_argument('--lr', type=float, default=0.0001, help='Learning Rate')
     parser.add_argument('--weightDecay', type=float, default=0.005, help='Weight Decay')
     parser.add_argument('--ckptFile', type=str, default="./ckpt.pt", help='Checkpoint File')
-    parser.add_argument('--transform', default=False, action='store_True', help='Enable Data transformation')
-    parser.add_argument('--fineTuning', default=False, action='store_True', help='For Transfer Learning')
+    parser.add_argument('--transform', default=False, action='store_true', help='Enable Data transformation')
+    parser.add_argument('--fineTuning', default=False, action='store_true', help='For Transfer Learning')
     parser.add_argument('--evalFreq', type=int, default=10, help='Eval Frequency')
     parser.add_argument('--saveFreq', type=int, default=10, help='Output Checkpoints save Frequency')
 
