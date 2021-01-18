@@ -25,7 +25,7 @@ def main():
 def PrintArgs(obj):
 
     print("\n ==================Options================")
-    for k,v in obj,__dict__.items():
+    for k,v in obj.__dict__.items():
         print(str(k) + "=" + str(v))
         if hasattr(v, '__dict__'):
             PrintArgs(v)

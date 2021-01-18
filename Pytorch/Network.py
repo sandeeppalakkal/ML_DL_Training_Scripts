@@ -9,17 +9,17 @@ class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels, mid_channels= None):
         super().__init__()
 
-    if not mid_channels:
-        mid_channels = out_channels
+        if not mid_channels:
+            mid_channels = out_channels
 
-    self.double_conv = nn.Sequential(
-                            nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1),
-                            nn.BatchNorm2d(mid_channels),
-                            nn.ReLU(inplace=True),
-                            nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1),
-                            nn.BatchNorm2d(out_channels),
-                            nn.ReLU(inplace=True)
-                        )
+        self.double_conv = nn.Sequential(
+                                nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1),
+                                nn.BatchNorm2d(mid_channels),
+                                nn.ReLU(inplace=True),
+                                nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1),
+                                nn.BatchNorm2d(out_channels),
+                                nn.ReLU(inplace=True)
+                            )
 
     def forward(self, x):
         return self.double_conv(x)
@@ -51,7 +51,7 @@ class Up(nn.Module):
             self.up   = nn.ConvTranspose2d(in_channels, in_channels//2, kernel_size=2, stride=2)
             self.conv = DoubleConv(in_channels, out_channels)
 
-    def forward(self, x):
+    def forward(self, x1, x2):
 
         x1 = self.up(x1)
 
@@ -91,20 +91,20 @@ class Network(nn.Module):
         self.up1 = Up(1024, 512//factor, bilinear)
         self.up2 = Up(512, 256//factor, bilinear)
         self.up3 = Up(256, 128//factor, bilinear)
-        self.up4 = Up(128, 64//factor, bilinear)
+        self.up4 = Up(128, 64, bilinear)
         self.outc = OutConv(64, out_channels)
 
 
     def forward(self, x):
         x1 = self.inc(x)
-        x2 = self.down1(x)
-        x3 = self.down2(x)
-        x4 = self.down3(x)
-        x5 = self.down4(x)
-        x  = self.up1(x5, x4)
+        x2 = self.down1(x1)
+        x3 = self.down2(x2)
+        x4 = self.down3(x3)
+        x5 = self.down4(x4)
+        x  = self.up1(x5,x4)
         x  = self.up2(x, x3)
-        x  = self.up1(x, x2)
-        x  = self.up1(x, x1)
+        x  = self.up3(x, x2)
+        x  = self.up4(x, x1)
         x  = self.outc(x)
 
         return x

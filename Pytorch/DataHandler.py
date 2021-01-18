@@ -22,7 +22,7 @@ class SingleImageDataset(Dataset):
         self.args = args
         self.datasetType = datasetType
 
-        self.transform   = sels.args.transform
+        self.transform   = self.args.transform
         self.isTraining  = False
         self.isTesting   = False
         self.isGTPresent = True
@@ -47,10 +47,12 @@ class SingleImageDataset(Dataset):
             self.isTesting = True
 
         if self.isGTPresent:
-            inputDir_t = join(input, "groundTruth")
+            inputDir_t = join(inputDir, "groundTruth")
             fileList_t = []
 
         fileList_b = []
+
+        dirList = os.listdir(inputDir_b)
 
         for file in dirList:
             fullfilepath_b = join(inputDir_b, file)
@@ -103,8 +105,8 @@ class SingleImageDataset(Dataset):
 
         imgWidth, imgHeight = img1.size
 
-        patchWidth = 256
-        patchWidth = 256
+        patchWidth  = 256
+        patchHeight = 256
 
         i = random.randint(0, imgHeight - patchHeight)
         j = random.randint(0, imgWidth  - patchWidth)
@@ -116,6 +118,7 @@ class SingleImageDataset(Dataset):
         img1 = F.crop(img1, i, j, patchHeight, patchWidth)
         img2 = F.crop(img2, i, j, patchHeight, patchWidth)
 
+        return img1, img2
 
     def ResizeData(self, img, scalingFactor=1):
 

@@ -44,7 +44,7 @@ class SingleImageSystem(object):
 
         network = self.GetNetwork()
 
-        if torch.cuda.device_count() > 1:
+        if torch.cuda.device_count() > 16:
             print("Enabling Data parallel")
             network = nn.DataParallel(network)
 
@@ -59,7 +59,7 @@ class SingleImageSystem(object):
         else:
             network.cuda(self.args.gpuID)
 
-        self.loss_fns = Losses.GetLossFunction(self.args, device)
+        self.loss_fns = Losses.GetLossFunction(self.args, self.device)
         self.loss_fns.ResetLosses()
 
         iter = 0
@@ -94,10 +94,10 @@ class SingleImageSystem(object):
             outIm   = self.GetImageFromTensor(outIm)
             outIm.save(fname_t)
 
-       now = datetime.now()
-       current_time = now.strftime("%H:%M:%S")
-       pTag = "\nTesting Complete[" + current_time + "] Processing Item = " + str(batchIdx) + "/" + str(tot//batchSize) + ", Testing Losses:"
-       self.loss_fns.PrintLosses(pTag, iter)
+        now = datetime.now()
+        current_time = now.strftime("%H:%M:%S")
+        pTag = "\nTesting Complete[" + current_time + "] Processing Item = " + str(batchIdx) + "/" + str(tot//batchSize) + ", Testing Losses:"
+        self.loss_fns.PrintLosses(pTag, iter)
 
 
     def StartTraining(self, train_data, eval_data):
@@ -112,12 +112,11 @@ class SingleImageSystem(object):
 
         startepoch = 0
         lrate = self.args.lr
-        wtDecay = selgs.args.weightDecay
+        wtDecay = self.args.weightDecay
 
-        network = GetNetwork()
+        network = self.GetNetwork()
 
-
-        if torch.cuda.device_count() > 1:
+        if torch.cuda.device_count() > 16:
             print("Enabling Data parallel")
             network = nn.DataParallel(network)
 
@@ -125,11 +124,12 @@ class SingleImageSystem(object):
         network.apply(weights_init)
         network.to(device)
 
+        self.device = device
         batchSize = self.args.batchsize
 
         tDataLoader = DataLoader(train_data, batch_size=batchSize, shuffle=False, num_workers=8, pin_memory=True)
 
-        optimizer = optim.Adan(network.parameters(), lr=lrate, weight_decay=wtDecay)
+        optimizer = optim.Adam(network.parameters(), lr=lrate, weight_decay=wtDecay)
         self.network = network
         self.optimizer = optimizer
 
@@ -138,7 +138,7 @@ class SingleImageSystem(object):
             startepoch, loss = self.LoadModel(self.args.ckptFile, True)
             network.train()
 
-        self.loss_fns = Losses.GetLossFunction(self.args.device)
+        self.loss_fns = Losses.GetLossFunction(self.args, self.device)
 
         for epoch in range(self.args.numEpochs):
 
@@ -167,7 +167,7 @@ class SingleImageSystem(object):
                 iter += 1
                 now = datetime.now()
                 current_time = now.strftime("%H:%M:%S")
-                pTag = "[" + current_time + "] Processing Item = " + str(batchIdx) + "/" + str(tot//batchSize) + ", Testing Losses:"
+                pTag = "[" + current_time + "] Processing Item = " + str(batchIdx) + "/" + str(tot//batchSize) + ", Training Losses:"
                 self.loss_fns.PrintLosses(pTag, iter)
 
             if(epoch % self.args.evalFreq == 0):
@@ -218,12 +218,17 @@ class SingleImageSystem(object):
 
     def EvalModel(self, eval_data, epoch):
 
-        eDataLoader   = DataLoader(train_data, batch_size=batchSize, shuffle=False, num_workers=8, pin_memory=True)
-        self.loss_fns = Losses.GetLossFunction(self.args, device)
+        eDataLoader   = DataLoader(eval_data, batch_size=self.args.batchsize, shuffle=False, num_workers=8, pin_memory=True)
+        self.loss_fns = Losses.GetLossFunction(self.args, self.device)
         self.loss_fns.ResetLosses()
 
+        device    = self.device
+        network   = self.network
+        tot       = len(eval_data)
+        batchSize = self.args.batchsize
+
         iter = 0
-        for item in eDataLoader:
+        for batchIdx, item in enumerate(eDataLoader):
 
             inIm = item["Input"]
             tIm  = item["GroundTruth"]
@@ -235,15 +240,16 @@ class SingleImageSystem(object):
             with torch.no_grad():
                 outIm = network.forward(inIm)
                 self.loss_fns.ComputeLosses(outIm, tIm)
+                self.loss_fns.UpdateLosses()
 
             iter += 1
             now = datetime.now()
             current_time = now.strftime("%H:%M:%S")
-            pTag = "[" + current_time + "] Processing Item = " + str(batchIdx) + "/" + str(tot//batchSize) + ", Testing Losses:"
+            pTag = "[" + current_time + "] Processing Item = " + str(batchIdx) + "/" + str(tot//batchSize) + ", Validation Losses:"
             self.loss_fns.PrintLosses(pTag, iter)
 
             imName  = item["FileName_b"]
-            imName1 = os.path.splitext(imName[idx])[0]
+            imName1 = os.path.splitext(imName[0])[0]
             fname_t = imName1 + "_input.jpg"
             fname_t = join(self.args.resultsDir, fname_t)
             inImage = self.GetImageFromTensor(inIm)
@@ -254,16 +260,11 @@ class SingleImageSystem(object):
             outIm   = self.GetImageFromTensor(outIm)
             outIm.save(fname_t)
 
-            now = datetime.now()
-            current_time = now.strftime("%H:%M:%S")
-            pTag = "[" + current_time + "] Processing Item = " + str(batchIdx) + "/" + str(tot//batchSize) + ", Testing Losses:"
-            self.loss_fns.PrintLosses(pTag, iter)
 
-
-       now = datetime.now()
-       current_time = now.strftime("%H:%M:%S")
-       pTag = "\nTesting Complete[" + current_time + "] Processing Item = " + str(batchIdx) + "/" + str(tot//batchSize) + ", Testing Losses:"
-       self.loss_fns.PrintLosses(pTag, iter)
+        now = datetime.now()
+        current_time = now.strftime("%H:%M:%S")
+        pTag = "\nTesting Complete[" + current_time + "] Processing Item = " + str(batchIdx) + "/" + str(tot//batchSize) + ", Validation Losses:"
+        self.loss_fns.PrintLosses(pTag, iter)
 
 
 

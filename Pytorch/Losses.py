@@ -21,7 +21,7 @@ class LossFunctionL1(object):
         self.L1lossVal = 0.0
         self.TotallossVal = 0.0
 
-    def ComputeLosses(self):
+    def ComputeLosses(self, outIm, tIm):
 
         self.lossL1 = self.L1LossFn(outIm, tIm)
 
